@@ -55,6 +55,12 @@ def create_payment_assertion(wallet_address=None, stripe_link=None, license_url=
 
 def stamp_file(input_file, output_file, wallet_address=None, stripe_link=None, license_url=None):
     """Stamp a file with payment metadata."""
+    input_path = Path(input_file)
+    
+    if not input_path.exists():
+        print(f"Error: Input file '{input_file}' does not exist", file=sys.stderr)
+        return False
+    
     print(f"Stamping file: {input_file}")
     
     # Create payment assertion
@@ -68,18 +74,38 @@ def stamp_file(input_file, output_file, wallet_address=None, stripe_link=None, l
     
     # Save manifest to temporary file
     manifest_path = Path("temp_manifest.json")
-    with open(manifest_path, "w") as f:
-        json.dump(manifest, f, indent=2)
-    
-    print(f"\nPayment Assertion:")
-    print(json.dumps(payment_assertion, indent=2))
-    
-    # Run c2patool to embed the manifest
-    # Note: This will be implemented once we verify the manifest structure
-    print(f"\nNote: Embedding functionality will be implemented in upcoming days.")
-    print(f"Manifest saved to: {manifest_path}")
-    
-    manifest_path.unlink()  # Clean up temp file
+    try:
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f, indent=2)
+        
+        print(f"\nPayment Assertion:")
+        print(json.dumps(payment_assertion, indent=2))
+        
+        # Run c2patool to embed the manifest
+        print(f"\nEmbedding manifest into file...")
+        result = subprocess.run(
+            ["c2patool", str(input_path), "--manifest", str(manifest_path), "--output", output_file, "--force"],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            print(f"Warning: c2patool returned an error:", file=sys.stderr)
+            print(result.stderr, file=sys.stderr)
+            print(f"\nNote: Embedding custom assertions requires signing credentials.", file=sys.stderr)
+            print(f"Manifest JSON saved to: {manifest_path}", file=sys.stderr)
+            print(f"\nYou can manually embed this manifest using c2patool with proper signing setup.")
+            return False
+        else:
+            print(f"\n✓ Successfully stamped file: {output_file}")
+            manifest_path.unlink()
+            return True
+            
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        if manifest_path.exists():
+            print(f"Manifest saved to: {manifest_path}")
+        return False
     
 
 def main():
@@ -108,12 +134,14 @@ def main():
     args = parser.parse_args()
     
     if args.command == "read":
-        read_manifest(args.file)
+        result = read_manifest(args.file)
+        sys.exit(0 if result else 1)
     elif args.command == "stamp":
         if not any([args.wallet, args.stripe, args.license]):
             print("Error: At least one payment method is required (--wallet, --stripe, or --license)", file=sys.stderr)
             sys.exit(1)
-        stamp_file(args.input, args.output, args.wallet, args.stripe, args.license)
+        success = stamp_file(args.input, args.output, args.wallet, args.stripe, args.license)
+        sys.exit(0 if success else 1)
     elif args.command == "version":
         print("OriginStamp v0.1.0")
         output = run_c2patool(["--version"])
