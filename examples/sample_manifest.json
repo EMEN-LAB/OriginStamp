@@ -1,0 +1,14 @@
+{
+  "claim_generator": "OriginStamp/0.1.0",
+  "title": "Sample C2PA Manifest with Payment",
+  "assertions": [
+    {
+      "label": "com.originstamp.payment",
+      "data": {
+        "wallet_address": "0x1234567890abcdef1234567890abcdef12345678",
+        "stripe_link": "https://buy.stripe.com/example",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    }
+  ]
+}
