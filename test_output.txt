@@ -1,2 +1,0 @@
-OriginStamp v0.1.0
-c2patool: c2patool 0.16.5
