@@ -2,3 +2,4 @@
 # Currently using only standard library modules
 # Future dependencies will be added here
 Pillow
+opencv-python
